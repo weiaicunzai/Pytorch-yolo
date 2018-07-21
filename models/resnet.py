@@ -145,7 +145,6 @@ class ResNet(nn.Module):
         x = self.conv4(x)
         x = self.conv5(x)
         
-
         x = self.reduce_conv(x)
         x = self.avgpool(x)
 
