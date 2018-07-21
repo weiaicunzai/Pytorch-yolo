@@ -73,7 +73,7 @@ class BottleNeck(nn.Module):
 
         if stride != 1 or input_channels != BottleNeck.expansion * output_channels:
             self.short_cut = nn.Sequential(
-                nn.Conv2d(input_channels, output_channels * BottleNeck.expansion, stride, bias=False),
+                nn.Conv2d(input_channels, output_channels * BottleNeck.expansion, 1, stride, bias=False),
                 nn.BatchNorm2d(output_channels * BottleNeck.expansion)
             )
 
@@ -85,8 +85,6 @@ class BottleNeck(nn.Module):
         x = self.conv2(x)
         x = self.conv3(x)
         
-        print(x.shape)
-        print(residual.shape)
         output = self.relu(residual + x)
         return output
 
@@ -94,11 +92,12 @@ class ResNet(nn.Module):
 
     def __init__(self, block, num_block, num_classes=20):
         super().__init__()
+        self.num_classes = num_classes
 
         self.input_channels = 64
         
         self.conv1 = nn.Sequential(
-            nn.Conv2d(3, self.input_channels, 3, padding=1, bias=False),
+            nn.Conv2d(3, self.input_channels, 3, padding=1, stride=2, bias=False),
             nn.BatchNorm2d(self.input_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(self.input_channels, self.input_channels, 3, padding=1, bias=False),
@@ -107,7 +106,6 @@ class ResNet(nn.Module):
             nn.Conv2d(self.input_channels, self.input_channels, 3, padding=1, bias=False),
             nn.BatchNorm2d(self.input_channels),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(2, stride=2)
         )
 
         self.conv2 = self._make_layers(block, 64, num_block[0], 2)
@@ -115,20 +113,49 @@ class ResNet(nn.Module):
         self.conv4 = self._make_layers(block, 256, num_block[2], 2)
         self.conv5 = self._make_layers(block, 512, num_block[3], 2)
 
-        self.feature = nn.Sequential(
-            self.conv1,
-            self.conv2,
-            self.conv3,
-            self.conv4,
-            self.conv5
+        self.avgpool = nn.AvgPool2d(2, stride=2)
+
+        #I reduced the parameters to a quarter 
+        #otherwise It would be over 400 billion parameters
+        #now we have over 100 billion parameters
+        self.reduce_conv = nn.Sequential(
+            nn.Conv2d(self.input_channels, int(self.input_channels / 4), 1, bias=False),
+            nn.BatchNorm2d(int(self.input_channels / 4)),
+            nn.ReLU(inplace=True)
         )
 
+    #2 fc layers:
+    #"""Our detection network has 24 convolutional layers followed by 
+    #2 fully connected layers."""
+    def _fc_layer(self, input_channels):
+        fc = nn.Sequential(
+            nn.Linear(input_channels, 4096),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+            nn.Linear(4096, (10 + self.num_classes) * 7 * 7)
+        )
+
+        return fc
 
     def forward(self, x):
-        x = self.feature(x)
+        #feature extraction
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = self.conv3(x)
+        x = self.conv4(x)
+        x = self.conv5(x)
+        
+
+        x = self.reduce_conv(x)
+        x = self.avgpool(x)
+
+        flat_length = x.shape[1] * x.shape[2] * x.shape[3]
+        x = x.view(-1, flat_length)
+        x = self._fc_layer(flat_length)(x)
+        x = x.view(-1, 30, 7, 7)
+
         return x
 
-    
     def _make_layers(self, block, output_channels, num_blocks, stride):
         strides = [stride] + [1] * (num_blocks - 1)
 
@@ -142,22 +169,20 @@ class ResNet(nn.Module):
 
 
 
-        
 
 
 
-
-
-from torch.autograd import Variable
-import torch
-bb = BasicBlock(3, 30)
-bb(Variable(torch.Tensor(1, 3, 32, 32)))
-
-bn = BottleNeck(3, 30)
-print(bn(Variable(torch.Tensor(1, 3, 32, 32))))
 
 def resnet101():
     return ResNet(BottleNeck, [3, 4, 23, 3])
 
-resnet = resnet101()
-print(resnet(Variable(torch.Tensor(1, 3, 100, 100))))
+def resnet152():
+    return ResNet(BottleNeck, [3, 8, 36, 3])
+
+def resnet50():
+    return ResNet(BottleNeck, [3, 4, 6, 3])
+
+def resnet34():
+    return ResNet(BasicBlock, [3, 4, 6, 3])
+
+
