@@ -1,16 +1,26 @@
+"""This module extracts parameters from voc dataset's annotation
+xml file and converts the parameters to the format we want, written
+in txt file, slightly modified of the original voc_labl.py in paper's
+source code:
+
+https://github.com/pjreddie/darknet/blob/master/scripts/voc_label.py
+
+Author: baiyu
+"""
+
 import xml.etree.ElementTree as ET
 import glob
-import pickle
 import os
-from os import listdir, getcwd
-from os.path import join
 
 
 classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
 
 root_path = "/media/baiyu/A2FEE355FEE31FF1/VOCdevkit (2)/VOC2012"
 annotation_path = os.path.join(root_path, 'Annotations')
+
 label_path = os.path.join(root_path, 'labels')
+if not os.path.exists(label_path):
+    os.mkdir(label_path)
 
 def convert(size, box):
     """Convert a xmin, xmax, ymin, ymax format box
@@ -43,11 +53,12 @@ def convert_annotation(xml_path):
         xml_path: path to annotation xml file
     """
 
-    xml_name = os.path.basename(xml_file)
+    xml_name = os.path.basename(xml_path)
     image_id = os.path.splitext(xml_name)[0]
 
-    in_file = open(xml_file)
-    out_file = open(os.path.join(label_path, image_id + '.txt'), 'w')
+    in_file = open(xml_path)
+    #out_file = open(os.path.join(label_path, image_id + '.txt'), 'w')
+    out_file = open('test.txt', 'w')
 
     tree=ET.parse(in_file)
     root = tree.getroot()
@@ -70,5 +81,8 @@ def convert_annotation(xml_path):
         out_file.write(str(cls_id) + " " + " ".join([str(a) for a in bb]) + '\n')
 
 
-for xml_file in glob.iglob(os.path.join(annotation_path, '*.xml')):
+for index, xml_file in enumerate(glob.iglob(os.path.join(annotation_path, '*.xml'))):
+    print('processing file number {}'.format(index))
     convert_annotation(xml_file)
+
+#convert_annotation('/media/baiyu/A2FEE355FEE31FF1/VOCdevkit (2)/VOC2012/Annotations/2012_004115.xml')

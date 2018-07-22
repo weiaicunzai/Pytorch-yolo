@@ -1,5 +1,7 @@
 """yolo backend
-using resnet101
+resnet 
+
+Author: baiyu
 """
 
 import torch.nn as nn
