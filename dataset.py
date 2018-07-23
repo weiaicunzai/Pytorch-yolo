@@ -1,14 +1,16 @@
 
 import os
 import cv2
+import random
 from collections import namedtuple
 
 import torch.utils.data as data
+import numpy as np
 
+import utils.plot_tools as plot_tools
+import utils.data_augmentation as aug
 from conf import settings
 
-
-#classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
 
 #only support voc dataset
 class YOLODataset_Train(data.Dataset):
@@ -17,16 +19,20 @@ class YOLODataset_Train(data.Dataset):
         print('data initializing.......')
 
         Box = namedtuple('Box', 'cls_id, x y w h')
-        labels = []
-        images_path = []
+
+        #variable to store boxes 
+        self.labels = []
+
+        #variable to store images path
+        self.images_path = []
         with open('data/train_voc.txt') as train_file:
             for line in train_file.readlines():
-                images_path.append(line.strip())
-                print(line.strip())
-
+                # add image path
+                self.images_path.append(line.strip())
 
                 image_id = os.path.basename(line.strip()).split('.')[0]
                 with open(os.path.join(settings.LABLE_PATH, image_id + '.txt')) as label_file:
+                    #get boxes per image
                     boxes = []
                     for box in label_file.readlines():
                         paras = [float(p) for p in box.strip().split()]
@@ -34,63 +40,38 @@ class YOLODataset_Train(data.Dataset):
                         box = Box(*paras)
 
                         boxes.append(box)
-                        
 
-        #sorted(self.img)
-        #sorted(self.labels)
-        #for i in range(len(self.img)):
-        #    print(self.img[i], self.labels[i])
-        #for i in range(10):
-        #    self._plot_image_bbox(os.path.join(self.image_path, self.img[i * 349 - 25]))
-        #print(label_name)
+                    self.labels.append(boxes)    
+                
+    def __getitem__(self, index):
+        image = cv2.imread(self.images_path[index])
+        boxes = self.labels[index]
 
-    
-    #def _plot_image_bbox(self, image_path):
-    #    image_name = os.path.basename(image_path)
-    #    image = cv2.imread(image_path)
+        #data augment
+        image, boxes = aug.random_horizontal_flip(image, boxes)
+        image = aug.random_bright(image)
+        image = aug.random_hue(image)
+        image = aug.random_saturation(image)
+        image = aug.random_gaussian_blur(image)
+        image, boxes = aug.random_affine(image, boxes)
+        image, boxes = aug.random_crop(image, boxes)
 
-    #    label_name = os.path.splitext(image_name)[0] + '.txt'
-    #    labels = open(os.path.join(self.labels_path, label_name), 'r')
-    #    boxes = []
-    #    for line in labels.readlines():
-    #        box = [float(x) for x in line.strip().split()]
-    #        boxes.append(box)
+        plot_tools.plot_image_bbox(image, boxes)
+        
 
-    #    for box in boxes:
-    #        shape = image.shape
-    #        hight = shape[0]
-    #        width = shape[1]
-
-    #        cls_index, x, y, w, h = box
-
-    #        x *= width
-    #        w *= width
-    #        y *= hight
-    #        h *= hight
-
-    #        #draw bbox
-    #        top_left = (int(x - w / 2), int(y - h / 2))
-    #        bottom_right = (int(x + w / 2), int(y + h / 2))
-    #        cv2.rectangle(image, top_left, bottom_right, (255, 220, 33))
-
-    #        #draw Text background rectangle
-    #        text_size, baseline = cv2.getTextSize(classes[int(cls_index)], cv2.FONT_HERSHEY_SIMPLEX, 0.4, 1)
-    #        cv2.rectangle(image, (top_left[0], top_left[1] - text_size[1]),
-    #                             (top_left[0] + text_size[0], top_left[1]),
-    #                             (255, 220, 33),
-    #                             -1)
-    #        
-    #        #draw text
-    #        cv2.putText(image, classes[int(cls_index)], 
-    #                           top_left,
-    #                           cv2.FONT_HERSHEY_DUPLEX,
-    #                           0.4,
-    #                           (255, 255, 255),
-    #                           1,
-    #                           8,
-    #                           )
-    #    cv2.imshow('test', image)
-    #    cv2.waitKey(0)
+    def __len__(self):
+        return len(self.images_path) 
 
 
-YOLODataset_Train(settings.ROOT_VOC_PATH)
+yolo_data = YOLODataset_Train(settings.ROOT_VOC_PATH)
+
+import cProfile
+
+cProfile.runctx('yolo_data[3]', globals(), None)
+
+
+for i in range(10):
+    yolo_data[random.randint(1, len(yolo_data))]
+
+
+

@@ -1,4 +1,6 @@
-# pytorch implementation of yolov1(under construction........)
+# Under Construction........
+
+# pytorch implementation of yolov1
 
 *here is the [paper](https://arxiv.org/abs/1506.02640v5)*
 
@@ -14,6 +16,8 @@ Pytorch implementation of yolov1
 ## implementation details
 
 - Image preprocessing: 
+
+
 I don't use mean substracting and std deviation as the preprocessing tricks,
 because not all the case we can know the mean and std of a dataset, for example,
 a live camera video flow.Yolo source code and the paper both suggests that no
@@ -46,6 +50,14 @@ crops, rotations, and hue, saturation, and exposure shifts.
 ```
 
 - Image Channel
+
 I'm using OpenCV as my image reading library, so the RGB order is BGR,
 If you want to use my code to predict image, or videos, please change
 your channel order to BGR
+
+- Compatibility
+
+I use Python3.5 to write the code, I've already tried my best to maintain
+the compatibility as possible, e.g. the result int / int is float in Python3.5
+I tried my best to avoid using / sign, but I Can't make any promises about
+the compatibility. Please use Python3.5!
