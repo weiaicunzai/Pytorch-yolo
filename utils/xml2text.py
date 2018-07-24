@@ -84,5 +84,3 @@ def convert_annotation(xml_path):
 for index, xml_file in enumerate(glob.iglob(os.path.join(annotation_path, '*.xml'))):
     print('processing file number {}'.format(index))
     convert_annotation(xml_file)
-
-#convert_annotation('/media/baiyu/A2FEE355FEE31FF1/VOCdevkit (2)/VOC2012/Annotations/2012_004115.xml')

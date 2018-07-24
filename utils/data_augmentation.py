@@ -12,6 +12,60 @@ import numpy as np
 import utils.plot_tools as plot_tools
 from conf import settings
 
+def resize(image, boxes, image_shape):
+    """resize image and boxes to certain
+    shape
+
+    Args:
+        image: a numpy array(BGR)
+        boxes: bounding boxes
+        image_shape: two element tuple(width, height)
+    
+    Returns:
+        resized image and boxes
+    """
+
+    origin_shape = image.shape
+    x_factor = image_shape[1] / float(origin_shape[1])
+    y_factor = image_shape[0] / float(origin_shape[0])
+
+    #resize_image
+    if (image.shape[1], image.shape[0]) != image_shape:
+        image = cv2.resize(image, image_shape)
+
+    #resize_box
+    result = []
+    for box in boxes:
+        cls_id, x, y, w, h = plot_tools.unnormalize_box_params(box, origin_shape)
+
+        x *= x_factor
+        w *= x_factor
+        y *= y_factor 
+        h *= y_factor
+
+        #clamping the box board, make sure box inside the image, 
+        #not on the board
+        tl_x = x - w / 2
+        tl_y = y - h / 2
+        br_x = x + w / 2
+        br_y = y + h / 2
+
+        tl_x = min(max(0, tl_x), 448 - 1)
+        tl_y = min(max(0, tl_y), 448 - 1)
+        br_x = max(min(448 - 1, br_x), 0)
+        br_y = max(min(448 - 1, br_y), 0)
+
+        w = br_x - tl_x
+        h = br_y - tl_y
+        x = (br_x + tl_x) / 2
+        y = (br_y + tl_y) / 2
+
+        Box = type(box)
+        box = Box(cls_id, x, y, w, h)
+        result.append(plot_tools.normalize_box_params(box, image.shape))
+
+    return image, result 
+
 def random_crop(image, boxes):
     """randomly crop image, resize image's
     shortest side to 448 * (1 + scale_factor)
@@ -27,30 +81,75 @@ def random_crop(image, boxes):
         and boxes
     """
 
-    #height, width = image.shape[:2]
-    #aspect_ratio = height / float(width)
     if random.random() < settings.AUG_PROB:
-
+        origin_shape = image.shape
         min_side = min(image.shape[:2])
-        #min_index = image.shape[:2].index(min_side)
-    
+
         #resize the image
         resized_side = int(448 * (1 + settings.CROP_JITTER))
         scale_ratio = resized_side / float(min_side)
         image = cv2.resize(image, (0, 0), fx=scale_ratio, fy=scale_ratio)
         
         for index, box in enumerate(boxes):
-            cls_id, x, y, w, h = plot_tools.unnormalize_box_params(box, image.shape)
+            cls_id, x, y, w, h = plot_tools.unnormalize_box_params(box, origin_shape)
     
-            x = x * scale_ratio * (1 + scale_ratio)
-            y = y * scale_ratio * (1 + scale_ratio)
-            w = w * scale_ratio * (1 + scale_ratio)
-            h = h * scale_ratio * (1 + scale_ratio)
-    
+            x *= scale_ratio 
+            y *= scale_ratio
+            w *= scale_ratio
+            h *= scale_ratio
+
             Box = type(box)
             box = Box(cls_id, x, y, w, h)
             boxes[index] = plot_tools.normalize_box_params(box, image.shape)
     
+        #crop the image
+        #mask(x_tl, x_br), (y_tl, y_br)
+        mask = [[0, 448], [0, 448]]
+        random_shift_x = random.randint(0, image.shape[1] - 448)
+        random_shift_y = random.randint(0, image.shape[0] - 448)
+        mask[0][0] = random_shift_x
+        mask[0][1] = random_shift_x + 448
+        mask[1][0] = random_shift_y
+        mask[1][1] = random_shift_y + 448
+
+        before_cropped = image.shape
+        image = image[mask[1][0] : mask[1][1], mask[0][0] : mask[0][1], :]
+
+        #crop boxes
+        result = []
+        for box in boxes:
+            cls_id, x, y, w, h = plot_tools.unnormalize_box_params(box, before_cropped)
+
+            #get old top_left, bottom_right coordinates
+            old_tl_x = x - int(w / 2)
+            old_tl_y = y - int(h / 2)
+            old_br_x = x + int(w / 2)
+            old_br_y = y + int(h / 2)
+
+            #clamp the old box coordinates
+            new_tl_x = min(max(old_tl_x, mask[0][0]), mask[0][1])
+            new_tl_y = min(max(old_tl_y, mask[1][0]), mask[1][1])
+            new_br_x = max(min(old_br_x, mask[0][1]), mask[0][0])
+            new_br_y = max(min(old_br_y, mask[1][1]), mask[1][0])
+
+
+            #get new w, h
+            if new_br_x - new_tl_x <= 0:
+                continue
+            w = new_br_x - new_tl_x
+            if new_br_y - new_tl_y <= 0:
+                continue
+            h = new_br_y - new_tl_y
+
+            #get new x, y
+            x = (new_br_x + new_tl_x) / 2 - mask[0][0] 
+            y = (new_br_y + new_tl_y) / 2 - mask[1][0]
+
+            Box = type(box)
+            box = Box(cls_id, x, y, w, h)
+            result.append(plot_tools.normalize_box_params(box, image.shape))
+
+        boxes = result
     return image, boxes
 
 def random_affine(image, boxes):

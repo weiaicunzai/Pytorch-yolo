@@ -18,7 +18,7 @@ class YOLODataset_Train(data.Dataset):
     def __init__(self, voc_root):
         print('data initializing.......')
 
-        Box = namedtuple('Box', 'cls_id, x y w h')
+        Box = namedtuple('Box', 'cls_id x y w h')
 
         #variable to store boxes 
         self.labels = []
@@ -48,13 +48,14 @@ class YOLODataset_Train(data.Dataset):
         boxes = self.labels[index]
 
         #data augment
-        image, boxes = aug.random_horizontal_flip(image, boxes)
         image = aug.random_bright(image)
         image = aug.random_hue(image)
         image = aug.random_saturation(image)
         image = aug.random_gaussian_blur(image)
+        image, boxes = aug.random_horizontal_flip(image, boxes)
         image, boxes = aug.random_affine(image, boxes)
         image, boxes = aug.random_crop(image, boxes)
+        image, boxes = aug.resize(image, boxes, (448, 448))
 
         plot_tools.plot_image_bbox(image, boxes)
         
@@ -70,7 +71,7 @@ import cProfile
 cProfile.runctx('yolo_data[3]', globals(), None)
 
 
-for i in range(10):
+for i in range(14):
     yolo_data[random.randint(1, len(yolo_data))]
 
 
