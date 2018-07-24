@@ -31,7 +31,7 @@ NUM_OF_TEST = 5000
 
 # augment probablity
 # probablity to use augmentation
-AUG_PROB = 0.7
+AUG_PROB = 0.5
 
 # a float number below 1.0 the brightness will be in 
 # range brightness * [1.0 - brightness, 1.0 + brightness]
@@ -60,6 +60,22 @@ AFFINE_SHIFT_FACTOR = 0.2
 CROP_JITTER = 0.2
 
 
+# """For evaluating YOLO on PASCAL VOC, we use S = 7,
+# B = 2. PASCAL VOC has 20 labelled classes so C = 20.
+# Our final prediction is a 7 × 7 × 30 tensor."""
 
+# grid number
+S = 7
 
+# bounding box number
+B = 2
+
+# lambda coord
+LAMBDA_COORD = 5
+
+# lambda noobj
+LAMBDA_NOOBJ = .5
+
+# image size
+IMG_SIZE = 448
 

@@ -47,7 +47,12 @@ class YOLODataset_Train(data.Dataset):
         image = cv2.imread(self.images_path[index])
         boxes = self.labels[index]
 
-        #data augment
+        #"""For data augmentation we introduce random scaling and
+        #translations of up to 20% of the original image size. We
+        #also randomly adjust the exposure and saturation of the im-
+        #age by up to a factor of 1.5 in the HSV color space."""
+
+        #data augment(I decide to use more augmentation than original paper)
         image = aug.random_bright(image)
         image = aug.random_hue(image)
         image = aug.random_saturation(image)
@@ -55,9 +60,13 @@ class YOLODataset_Train(data.Dataset):
         image, boxes = aug.random_horizontal_flip(image, boxes)
         image, boxes = aug.random_affine(image, boxes)
         image, boxes = aug.random_crop(image, boxes)
-        image, boxes = aug.resize(image, boxes, (448, 448))
+        image, boxes = aug.resize(image, boxes, (settings.IMG_SIZE, settings.IMG_SIZE))
+            
+        #rescale to 0 - 1
+        image = image / float(255)
 
         plot_tools.plot_image_bbox(image, boxes)
+        target = np.zeros((settings.S, settings.S, settings.B* 5 + len(settings.CLASSES)))
         
 
     def __len__(self):

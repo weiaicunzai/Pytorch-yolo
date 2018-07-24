@@ -50,10 +50,10 @@ def resize(image, boxes, image_shape):
         br_x = x + w / 2
         br_y = y + h / 2
 
-        tl_x = min(max(0, tl_x), 448 - 1)
-        tl_y = min(max(0, tl_y), 448 - 1)
-        br_x = max(min(448 - 1, br_x), 0)
-        br_y = max(min(448 - 1, br_y), 0)
+        tl_x = min(max(0, tl_x), settings.IMG_SIZE - 1)
+        tl_y = min(max(0, tl_y), settings.IMG_SIZE - 1)
+        br_x = max(min(settings.IMG_SIZE - 1, br_x), 0)
+        br_y = max(min(settings.IMG_SIZE - 1, br_y), 0)
 
         w = br_x - tl_x
         h = br_y - tl_y
@@ -68,9 +68,9 @@ def resize(image, boxes, image_shape):
 
 def random_crop(image, boxes):
     """randomly crop image, resize image's
-    shortest side to 448 * (1 + scale_factor)
+    shortest side to settings.IMG_SIZE * (1 + scale_factor)
     while remain the aspect ratio, then crop a 
-    448 * 448 image
+    settings.IMG_SIZE * settings.IMG_SIZE image
 
     Args:
         image: a image numpy array(BGR)
@@ -86,7 +86,7 @@ def random_crop(image, boxes):
         min_side = min(image.shape[:2])
 
         #resize the image
-        resized_side = int(448 * (1 + settings.CROP_JITTER))
+        resized_side = int(settings.IMG_SIZE * (1 + settings.CROP_JITTER))
         scale_ratio = resized_side / float(min_side)
         image = cv2.resize(image, (0, 0), fx=scale_ratio, fy=scale_ratio)
         
@@ -103,14 +103,13 @@ def random_crop(image, boxes):
             boxes[index] = plot_tools.normalize_box_params(box, image.shape)
     
         #crop the image
-        #mask(x_tl, x_br), (y_tl, y_br)
-        mask = [[0, 448], [0, 448]]
-        random_shift_x = random.randint(0, image.shape[1] - 448)
-        random_shift_y = random.randint(0, image.shape[0] - 448)
+        mask = [[0, settings.IMG_SIZE], [0, settings.IMG_SIZE]]
+        random_shift_x = random.randint(0, image.shape[1] - settings.IMG_SIZE)
+        random_shift_y = random.randint(0, image.shape[0] - settings.IMG_SIZE)
         mask[0][0] = random_shift_x
-        mask[0][1] = random_shift_x + 448
+        mask[0][1] = random_shift_x + settings.IMG_SIZE
         mask[1][0] = random_shift_y
-        mask[1][1] = random_shift_y + 448
+        mask[1][1] = random_shift_y + settings.IMG_SIZE
 
         before_cropped = image.shape
         image = image[mask[1][0] : mask[1][1], mask[0][0] : mask[0][1], :]
