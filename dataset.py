@@ -18,6 +18,7 @@ class YOLODataset_Train(data.Dataset):
     def __init__(self, voc_root):
         print('data initializing.......')
 
+        #Box definition
         Box = namedtuple('Box', 'cls_id x y w h')
 
         #variable to store boxes 
@@ -25,13 +26,22 @@ class YOLODataset_Train(data.Dataset):
 
         #variable to store images path
         self.images_path = []
+
+        self.S = settings.S
+        self.B = settings.B
+        self.classes = settings.CLASSES
+        self.img_size = settings.IMG_SIZE
+        self.label_path = settings.LABLE_PATH
+        self.cell_size = int(self.img_size / self.S)
+
         with open('data/train_voc.txt') as train_file:
             for line in train_file.readlines():
+
                 # add image path
                 self.images_path.append(line.strip())
-
                 image_id = os.path.basename(line.strip()).split('.')[0]
-                with open(os.path.join(settings.LABLE_PATH, image_id + '.txt')) as label_file:
+                with open(os.path.join(self.label_path, image_id + '.txt')) as label_file:
+
                     #get boxes per image
                     boxes = []
                     for box in label_file.readlines():
@@ -60,17 +70,65 @@ class YOLODataset_Train(data.Dataset):
         image, boxes = aug.random_horizontal_flip(image, boxes)
         image, boxes = aug.random_affine(image, boxes)
         image, boxes = aug.random_crop(image, boxes)
-        image, boxes = aug.resize(image, boxes, (settings.IMG_SIZE, settings.IMG_SIZE))
+        image, boxes = aug.resize(image, boxes, (self.img_size, self.img_size))
             
         #rescale to 0 - 1
         image = image / float(255)
+        target = self._encode(image, boxes)
 
-        plot_tools.plot_image_bbox(image, boxes)
-        target = np.zeros((settings.S, settings.S, settings.B* 5 + len(settings.CLASSES)))
+        #plot_tools.plot_compare(image, target, boxes)
+        return image, target
+        #plot_tools.plot_image_bbox(image, boxes)
         
 
     def __len__(self):
         return len(self.images_path) 
+
+
+    def _encode(self, image, boxes):
+        """Transform image and boexs to a (7 * 7 * 30)
+        numpy array(bbox + confidence + bbox + confidence
+        + class_num)
+
+        Args:
+            image: numpy array, read by opencv
+            boxes: namedtuple object
+        
+        Returns:
+            a 7*7*30 numpy array
+        """
+
+        target = np.zeros((self.S, self.S, self.B * 5 + len(self.classes)))
+        for box in boxes:
+            cls_id, x, y, w, h = plot_tools.unnormalize_box_params(box, image.shape)
+            col_index = int(x / self.cell_size)
+            row_index = int(y / self.cell_size)
+
+            # assign confidence score
+
+            #"""Formally we define confidence as Pr(Object) ∗ IOU truth
+            #pred . If no object exists in that cell, the confidence 
+            #scores should be zero. Otherwise we want the confidence score 
+            #to equal the intersection over union (IOU) between the 
+            #predicted box and the ground truth."""
+            target[row_index, col_index, 4] = 1
+            target[row_index, col_index, 9] = 1
+
+            #assign class probs
+
+            #"""Each grid cell also predicts C conditional class proba-
+            #bilities, Pr(Class i |Object)."""
+            target[row_index, col_index, 10 + cls_id] = 1
+
+            #assign x,y,w,h
+            target[row_index, col_index, :4] = box.x, box.y, box.w, box.h
+            target[row_index, col_index, 5:9] = box.x, box.y, box.w, box.h
+
+
+            
+        return target
+
+
 
 
 yolo_data = YOLODataset_Train(settings.ROOT_VOC_PATH)

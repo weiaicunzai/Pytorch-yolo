@@ -70,14 +70,14 @@ def plot_image_bbox(image, boxes):
         #draw bbox
         top_left = (int(x - w / 2), int(y - h / 2))
         bottom_right = (int(x + w / 2), int(y + h / 2))
-        cv2.rectangle(image, top_left, bottom_right, (255, 220, 33))
+        cv2.rectangle(image, top_left, bottom_right, settings.COLOR[cls_index])
 
         #draw Text background rectangle
         text_size, baseline = cv2.getTextSize(settings.CLASSES[int(cls_index)], 
                                               cv2.FONT_HERSHEY_SIMPLEX, 0.4, 1)
         cv2.rectangle(image, (top_left[0], top_left[1] - text_size[1]),
                              (top_left[0] + text_size[0], top_left[1]),
-                             (255, 220, 33),
+                             settings.COLOR[cls_index],
                              -1)
         
         #draw text
@@ -85,9 +85,67 @@ def plot_image_bbox(image, boxes):
                            top_left,
                            cv2.FONT_HERSHEY_DUPLEX,
                            0.4,
-                           (255, 255, 255),
+                           settings.COLOR[int(cls_index)],
                            1,
                            8,
                            )
+    cv2.imshow('test', image)
+    cv2.waitKey(0)
+
+def plot_compare(image, target, boxes):
+    """compare target and boxes on the image
+
+    Args:
+        target: a target is a 7 * 7 * 30 numpy
+        array
+        image: a 448 * 448 * 3 numpy array
+        boxes: a namedtuple
+    """
+
+    plot_image_bbox(image, boxes)
+    row_num, col_num = target.shape[:2]
+    for row in range(row_num):
+        for col in range(col_num):
+            value = target[row, col, :]
+
+            #if this cell does not contain object
+            if not value[9]:
+                continue
+            
+            cls_id = value[10:].tolist().index(1)
+            cv2.rectangle(image, 
+                          (settings.IMG_SIZE // settings.S * col, settings.IMG_SIZE // settings.S * row),
+                          (settings.IMG_SIZE // settings.S * (col + 1), settings.IMG_SIZE // settings.S * (row + 1)),
+                          settings.COLOR[int(cls_id)],
+                          -1)
+
+            x, y, w, h = value[5:9]
+            x *= image.shape[1]
+            w *= image.shape[1]
+            y *= image.shape[0]
+            h *= image.shape[0]
+
+            #draw bbox
+            top_left = (int(x - w / 2), int(y - h / 2))
+            bottom_right = (int(x + w / 2), int(y + h / 2))
+            cv2.rectangle(image, top_left, bottom_right, settings.COLOR[int(cls_id)])
+
+            #draw Text background rectangle
+            text_size, baseline = cv2.getTextSize(settings.CLASSES[int(cls_id)], 
+                                                  cv2.FONT_HERSHEY_SIMPLEX, 0.4, 1)
+            cv2.rectangle(image, (top_left[0], top_left[1] - text_size[1]),
+                                 (top_left[0] + text_size[0], top_left[1]),
+                                 settings.COLOR[int(cls_id)],
+                                 -1)
+
+            #draw text
+            cv2.putText(image, settings.CLASSES[int(cls_id)], 
+                               top_left,
+                               cv2.FONT_HERSHEY_DUPLEX,
+                               0.4,
+                               settings.COLOR[int(cls_id)],
+                               1,
+                               8,
+                               )
     cv2.imshow('test', image)
     cv2.waitKey(0)
