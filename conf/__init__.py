@@ -10,7 +10,7 @@ import conf.global_settings
 class Settings:
     def __init__(self, setting_modules):
 
-        #constructing attributes
+        #construct attributes
         for settings in dir(setting_modules):
             if settings.isupper():
                 setattr(self, settings, getattr(global_settings, settings))
